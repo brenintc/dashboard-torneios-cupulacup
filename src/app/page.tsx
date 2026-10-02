@@ -15,24 +15,24 @@ export default function Home() {
   const [torneios, setTorneios] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function carregarTorneios() {
-      try {
-        const { data, error } = await supabase
-          .from('tournaments')
-          .select('id, title, game, status')
-          .order('id', { ascending: false });
+  const carregarTorneios = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('id, title, game, status')
+        .order('id', { ascending: false });
 
-        if (!error && data) {
-          setTorneios(data);
-        }
-      } catch (err) {
-        console.error('Erro:', err);
-      } finally {
-        setLoading(false);
+      if (!error && data) {
+        setTorneios(data);
       }
+    } catch (err) {
+      console.error('Erro:', err);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     carregarTorneios();
   }, []);
 

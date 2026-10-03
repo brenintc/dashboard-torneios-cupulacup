@@ -110,4 +110,4 @@ export default function GestaoEquipa() {
   }
 
   if (!team) {
-    return
+    return (

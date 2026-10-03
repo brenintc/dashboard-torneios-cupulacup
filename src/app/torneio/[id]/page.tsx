@@ -76,4 +76,4 @@ export default function DetalhesTorneio() {
   }, [id])
 
   if (loading) {
-    return
+    return (

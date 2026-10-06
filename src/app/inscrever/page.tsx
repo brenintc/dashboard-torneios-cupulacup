@@ -68,7 +68,7 @@ export default function InscreverEquipa() {
     await supabase.auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        redirectTo: `${window.location.origin}/inscrever`,
+        redirectTo: `https://dashboard-cupulacup.vercel.app/inscrever`,
       },
     })
   }

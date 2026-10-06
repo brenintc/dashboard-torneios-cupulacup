@@ -49,7 +49,7 @@ export function useAuth() {
   const login = () =>
     supabase.auth.signInWithOAuth({
       provider: 'discord',
-      options: { redirectTo: window.location.href },
+      options: { redirectTo: 'https://dashboard-cupulacup.vercel.app/'},
     })
 
   const logout = () => supabase.auth.signOut()

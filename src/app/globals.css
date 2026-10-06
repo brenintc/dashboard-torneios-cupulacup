@@ -1,3 +1,87 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #04060d;
+  --color-panel: #0a1020;
+  --color-panel-2: #0f1a36;
+  --color-edge: #1a2a52;
+  --color-brand: #2b6bff;
+  --color-brand-hi: #5b8cff;
+  --color-silver: #d5d9e0;
+  --color-mute: #8a93a6;
+  --font-display: var(--font-chakra), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ink);
+  background-image: radial-gradient(70% 45% at 50% -8%, rgba(43, 107, 255, 0.2), transparent 70%);
+  background-repeat: no-repeat;
+  color: var(--color-silver);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+select option {
+  background: #0a1020;
+  color: #fff;
+}
+
+@layer components {
+  /* Cantos chanfrados, ecoando as facetas do escudo da logo */
+  .card {
+    background: linear-gradient(160deg, var(--color-panel-2), var(--color-panel) 60%);
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+    box-shadow: inset 3px 0 0 var(--color-brand);
+  }
+
+  .card-link {
+    display: block;
+    transition: filter 0.15s;
+  }
+  .card-link:hover,
+  .card-link:focus-visible {
+    filter: brightness(1.25);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-hi focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-hi disabled:cursor-not-allowed disabled:opacity-50;
+    box-shadow: 0 0 28px -8px var(--color-brand);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-edge px-4 py-2 text-sm font-semibold text-silver transition hover:border-brand hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-hi disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-red-500/40 px-3 py-1.5 text-sm font-semibold text-red-400 transition hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-edge bg-ink/60 px-3 py-2 text-sm text-white outline-none transition placeholder:text-mute focus:border-brand focus:ring-1 focus:ring-brand;
+  }
+
+  .label {
+    @apply mb-1 block text-sm text-mute;
+  }
+
+  .th {
+    @apply px-3 py-2 text-left text-sm font-medium text-mute;
+  }
+
+  .td {
+    @apply px-3 py-3 text-sm;
+  }
+}

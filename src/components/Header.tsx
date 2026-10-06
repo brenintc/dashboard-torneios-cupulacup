@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/useAuth'
 
 const LINKS = [
   { href: '/campeonatos', label: 'Campeonatos' },
+  { href: '/hall-da-fama', label: 'Hall da Fama' },
   { href: '/minhas-equipes', label: 'Minhas equipes' },
   { href: '/regras', label: 'Regras' },
 ]

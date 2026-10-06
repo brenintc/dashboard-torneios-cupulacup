@@ -3,11 +3,13 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/useAuth'
-import type { Equipe, Inscricao, Membro, Msg, Torneio } from '@/lib/types'
+import type { Equipe, Inscricao, Membro, Msg, Partida, Torneio } from '@/lib/types'
+import { SELECT_PARTIDA } from '@/lib/types'
+import { chamarApi } from '@/lib/api'
 import { erroMsg, fmtData } from '@/lib/utils'
 import { Aviso, Pagina, StatusBadge } from '@/components/ui'
 
-type Aba = 'campeonatos' | 'equipes' | 'inscricoes'
+type Aba = 'campeonatos' | 'equipes' | 'inscricoes' | 'chaves'
 
 const STATUS = [
   { valor: 'aberto', label: 'Inscrições abertas' },
@@ -49,6 +51,7 @@ export default function Admin() {
     { id: 'campeonatos', label: 'Campeonatos' },
     { id: 'equipes', label: 'Equipes' },
     { id: 'inscricoes', label: 'Inscrições' },
+    { id: 'chaves', label: 'Grupos e mata-mata' },
   ]
 
   return (
@@ -71,6 +74,7 @@ export default function Admin() {
         {aba === 'campeonatos' && <AbaCampeonatos />}
         {aba === 'equipes' && <AbaEquipes />}
         {aba === 'inscricoes' && <AbaInscricoes />}
+        {aba === 'chaves' && <AbaChaves />}
       </div>
     </Pagina>
   )
@@ -88,6 +92,8 @@ function AbaCampeonatos() {
     edition: 'FC 26',
     status: 'aberto',
     max_teams: '16',
+    group_size: '4',
+    advance_per_group: '2',
     prize: '',
     entry_fee: '0',
     starts_at: '',
@@ -120,6 +126,8 @@ function AbaCampeonatos() {
         edition: f.edition.trim() || null,
         status: f.status,
         max_teams: f.max_teams ? Number(f.max_teams) : null,
+        group_size: Number(f.group_size) || 4,
+        advance_per_group: Number(f.advance_per_group) || 2,
         prize: f.prize.trim() || null,
         entry_fee: f.entry_fee ? Number(f.entry_fee) : 0,
         starts_at: f.starts_at ? new Date(f.starts_at).toISOString() : null,
@@ -174,6 +182,16 @@ function AbaCampeonatos() {
             <div>
               <label htmlFor="c-fee" className="label">Inscrição (R$)</label>
               <input id="c-fee" type="number" min={0} step="0.01" className="input" value={f.entry_fee} onChange={campo('entry_fee')} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="c-gs" className="label">Equipes por grupo</label>
+              <input id="c-gs" type="number" min={2} className="input" value={f.group_size} onChange={campo('group_size')} />
+            </div>
+            <div>
+              <label htmlFor="c-adv" className="label">Avançam por grupo</label>
+              <input id="c-adv" type="number" min={1} className="input" value={f.advance_per_group} onChange={campo('advance_per_group')} />
             </div>
           </div>
           <div>
@@ -374,7 +392,7 @@ function AbaInscricoes() {
     if (!torneioId) return
     const { data } = await supabase
       .from('tournament_registrations')
-      .select('id, tournament_id, team_id, status, wins, losses, teams(name, tag)')
+      .select('id, tournament_id, team_id, status, wins, losses, payment_status, group_name, teams(name, tag)')
       .eq('tournament_id', torneioId)
       .order('wins', { ascending: false })
     setInscricoes((data as unknown as Inscricao[]) || [])
@@ -384,7 +402,7 @@ function AbaInscricoes() {
     carregar()
   }, [carregar])
 
-  async function salvar(r: Inscricao, campos: Partial<Pick<Inscricao, 'status' | 'wins' | 'losses'>>) {
+  async function salvar(r: Inscricao, campos: Partial<Pick<Inscricao, 'status' | 'wins' | 'losses' | 'payment_status'>>) {
     const { error } = await supabase.from('tournament_registrations').update(campos).eq('id', r.id)
     if (error) setMsg({ texto: `Erro ao salvar: ${erroMsg(error)}`, tipo: 'erro' })
     else {
@@ -419,11 +437,12 @@ function AbaInscricoes() {
         <p className="mt-6 text-mute">Nenhuma equipe inscrita neste campeonato.</p>
       ) : (
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[560px]">
+          <table className="w-full min-w-[720px]">
             <thead>
               <tr className="border-b border-edge">
                 <th className="th">Equipe</th>
                 <th className="th">Situação</th>
+                <th className="th">Pagamento</th>
                 <th className="th">V</th>
                 <th className="th">D</th>
                 <th className="th"><span className="sr-only">Ações</span></th>
@@ -431,7 +450,7 @@ function AbaInscricoes() {
             </thead>
             <tbody>
               {inscricoes.map((r) => (
-                <LinhaInscricao key={`${r.id}-${r.wins}-${r.losses}-${r.status}`} r={r} salvar={salvar} remover={remover} />
+                <LinhaInscricao key={`${r.id}-${r.wins}-${r.losses}-${r.status}-${r.payment_status}`} r={r} salvar={salvar} remover={remover} />
               ))}
             </tbody>
           </table>
@@ -447,13 +466,15 @@ function LinhaInscricao({
   remover,
 }: {
   r: Inscricao
-  salvar: (r: Inscricao, c: Partial<Pick<Inscricao, 'status' | 'wins' | 'losses'>>) => void
+  salvar: (r: Inscricao, c: Partial<Pick<Inscricao, 'status' | 'wins' | 'losses' | 'payment_status'>>) => void
   remover: (r: Inscricao) => void
 }) {
   const [wins, setWins] = useState(String(r.wins))
   const [losses, setLosses] = useState(String(r.losses))
   const [status, setStatus] = useState(r.status)
-  const mudou = Number(wins) !== r.wins || Number(losses) !== r.losses || status !== r.status
+  const [pag, setPag] = useState(r.payment_status)
+  const mudou =
+    Number(wins) !== r.wins || Number(losses) !== r.losses || status !== r.status || pag !== r.payment_status
 
   return (
     <tr className="border-b border-edge/60">
@@ -466,6 +487,13 @@ function LinhaInscricao({
         </select>
       </td>
       <td className="td">
+        <select aria-label="Pagamento" className="input" value={pag} onChange={(e) => setPag(e.target.value)}>
+          <option value="pendente">Pendente</option>
+          <option value="pago">Pago</option>
+          <option value="isento">Isento</option>
+        </select>
+      </td>
+      <td className="td">
         <input aria-label="Vitórias" type="number" min={0} className="input w-20" value={wins} onChange={(e) => setWins(e.target.value)} />
       </td>
       <td className="td">
@@ -475,7 +503,7 @@ function LinhaInscricao({
         <div className="flex gap-2">
           <button
             disabled={!mudou}
-            onClick={() => salvar(r, { status, wins: Number(wins) || 0, losses: Number(losses) || 0 })}
+            onClick={() => salvar(r, { status, payment_status: pag, wins: Number(wins) || 0, losses: Number(losses) || 0 })}
             className="btn-primary"
           >
             Salvar
@@ -484,5 +512,218 @@ function LinhaInscricao({
         </div>
       </td>
     </tr>
+  )
+}
+
+
+/* ---------------------------- Grupos e mata-mata -------------------------- */
+
+function paraInputLocal(iso: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function AbaChaves() {
+  const [torneios, setTorneios] = useState<Torneio[]>([])
+  const [torneioId, setTorneioId] = useState('')
+  const [partidas, setPartidas] = useState<Partida[]>([])
+  const [ocupado, setOcupado] = useState(false)
+  const [msg, setMsg] = useState<Msg>({ texto: '', tipo: '' })
+
+  useEffect(() => {
+    supabase
+      .from('tournaments')
+      .select('*')
+      .order('id', { ascending: false })
+      .then(({ data }) => {
+        const lista = (data as Torneio[]) || []
+        setTorneios(lista)
+        if (lista[0]) setTorneioId(String(lista[0].id))
+      })
+  }, [])
+
+  const carregar = useCallback(async () => {
+    if (!torneioId) return
+    const { data } = await supabase
+      .from('matches')
+      .select(SELECT_PARTIDA)
+      .eq('tournament_id', torneioId)
+      .order('stage')
+      .order('round')
+      .order('id')
+    setPartidas((data as unknown as Partida[]) || [])
+  }, [torneioId])
+
+  useEffect(() => {
+    carregar()
+  }, [carregar])
+
+  async function executar(fn: 'sortear_grupos' | 'gerar_mata_mata', pergunta: string, ok: string) {
+    if (!confirm(pergunta)) return
+    setOcupado(true)
+    setMsg({ texto: '', tipo: '' })
+    const { error } = await supabase.rpc(fn, { p_torneio_id: Number(torneioId) })
+    if (error) setMsg({ texto: erroMsg(error), tipo: 'erro' })
+    else {
+      setMsg({ texto: ok, tipo: 'sucesso' })
+      await carregar()
+    }
+    setOcupado(false)
+  }
+
+  const grupos = partidas.filter((p) => p.stage === 'grupos')
+  const mata = partidas.filter((p) => p.stage === 'mata_mata')
+
+  return (
+    <section>
+      <h2 className="text-2xl font-bold">Grupos e mata-mata</h2>
+      <div className="mt-4 max-w-sm">
+        <label htmlFor="g-torneio" className="label">Campeonato</label>
+        <select id="g-torneio" className="input" value={torneioId} onChange={(e) => setTorneioId(e.target.value)}>
+          {torneios.map((t) => (
+            <option key={t.id} value={t.id}>{t.title}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          disabled={ocupado || !torneioId || mata.length > 0}
+          onClick={() =>
+            executar(
+              'sortear_grupos',
+              'Sortear os grupos agora? Só entram equipes com inscrição paga ou isenta. O sorteio anterior será refeito.',
+              'Grupos sorteados e jogos criados.'
+            )
+          }
+          className="btn-primary"
+        >
+          {grupos.length > 0 ? 'Sortear grupos de novo' : 'Sortear grupos'}
+        </button>
+        <button
+          disabled={ocupado || grupos.length === 0 || mata.length > 0}
+          onClick={() =>
+            executar(
+              'gerar_mata_mata',
+              'Gerar o mata-mata com os classificados? Todos os jogos da fase de grupos precisam ter resultado.',
+              'Mata-mata gerado.'
+            )
+          }
+          className="btn-primary"
+        >
+          Gerar mata-mata
+        </button>
+      </div>
+      <Aviso msg={msg} />
+
+      {partidas.length === 0 ? (
+        <p className="mt-8 text-mute">Nenhum jogo ainda. Feche as inscrições e sorteie os grupos.</p>
+      ) : (
+        <>
+          {grupos.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold">Fase de grupos ({grupos.length} jogos)</h3>
+              <ul className="mt-3 space-y-3">
+                {grupos.map((p) => (
+                  <PartidaAdmin key={`${p.id}-${p.score_a}-${p.score_b}-${p.discord_channel_id}-${p.ready_a}-${p.ready_b}`} p={p} aoMudar={carregar} />
+                ))}
+              </ul>
+            </div>
+          )}
+          {mata.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold">Mata-mata ({mata.length} jogos)</h3>
+              <ul className="mt-3 space-y-3">
+                {mata.map((p) => (
+                  <PartidaAdmin key={`${p.id}-${p.score_a}-${p.score_b}-${p.team_a_id}-${p.team_b_id}-${p.discord_channel_id}-${p.ready_a}-${p.ready_b}`} p={p} aoMudar={carregar} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function PartidaAdmin({ p, aoMudar }: { p: Partida; aoMudar: () => void }) {
+  const [a, setA] = useState(p.score_a === null ? '' : String(p.score_a))
+  const [b, setB] = useState(p.score_b === null ? '' : String(p.score_b))
+  const [quando, setQuando] = useState(paraInputLocal(p.scheduled_at))
+  const [msg, setMsg] = useState<Msg>({ texto: '', tipo: '' })
+  const [ocupado, setOcupado] = useState(false)
+
+  const definido = p.team_a_id !== null && p.team_b_id !== null
+  const nome = (t: { name: string; tag: string } | null) => (t ? `[${t.tag}] ${t.name}` : 'A definir')
+  const rotulo = p.stage === 'grupos' ? `Grupo ${p.group_name}, rodada ${p.round}` : `Mata-mata, rodada ${p.round}`
+
+  async function salvarResultado() {
+    if (a === '' || b === '') {
+      setMsg({ texto: 'Informe os dois placares.', tipo: 'erro' })
+      return
+    }
+    setOcupado(true)
+    const { error } = await supabase.rpc('registrar_resultado', {
+      p_match_id: p.id,
+      p_a: Number(a),
+      p_b: Number(b),
+    })
+    setOcupado(false)
+    if (error) setMsg({ texto: erroMsg(error), tipo: 'erro' })
+    else aoMudar()
+  }
+
+  async function salvarHorario() {
+    setOcupado(true)
+    const { error } = await supabase
+      .from('matches')
+      .update({ scheduled_at: quando ? new Date(quando).toISOString() : null })
+      .eq('id', p.id)
+    setOcupado(false)
+    if (error) setMsg({ texto: erroMsg(error), tipo: 'erro' })
+    else setMsg({ texto: 'Horário salvo.', tipo: 'sucesso' })
+  }
+
+  async function discord() {
+    setOcupado(true)
+    setMsg({ texto: '', tipo: '' })
+    try {
+      await chamarApi('/api/discord/confronto', { match_id: p.id, acao: p.discord_channel_id ? 'encerrar' : 'criar' })
+      aoMudar()
+    } catch (e) {
+      setMsg({ texto: erroMsg(e), tipo: 'erro' })
+    }
+    setOcupado(false)
+  }
+
+  return (
+    <li className="card p-4">
+      <p className="text-xs text-mute">{rotulo}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <span className="min-w-0 flex-1 text-right font-medium text-white">{nome(p.team_a)}</span>
+        <input aria-label="Placar da equipe A" type="number" min={0} disabled={!definido} className="input w-16 text-center" value={a} onChange={(e) => setA(e.target.value)} />
+        <span>x</span>
+        <input aria-label="Placar da equipe B" type="number" min={0} disabled={!definido} className="input w-16 text-center" value={b} onChange={(e) => setB(e.target.value)} />
+        <span className="min-w-0 flex-1 font-medium text-white">{nome(p.team_b)}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button onClick={salvarResultado} disabled={ocupado || !definido} className="btn-primary">
+          {p.status === 'finalizada' ? 'Corrigir resultado' : 'Salvar resultado'}
+        </button>
+        <input aria-label="Data e hora" type="datetime-local" className="input w-auto" value={quando} onChange={(e) => setQuando(e.target.value)} />
+        <button onClick={salvarHorario} disabled={ocupado} className="btn-ghost">Salvar horário</button>
+        <button onClick={discord} disabled={ocupado || !definido} className="btn-ghost">
+          {p.discord_channel_id ? 'Encerrar canal no Discord' : 'Criar canal no Discord'}
+        </button>
+        {p.discord_channel_id && (
+          <span className="text-xs text-mute">
+            Ready-check: {p.team_a?.tag} {p.ready_a ? 'pronto' : 'aguardando'}, {p.team_b?.tag} {p.ready_b ? 'pronto' : 'aguardando'}
+          </span>
+        )}
+      </div>
+      <Aviso msg={msg} />
+    </li>
   )
 }

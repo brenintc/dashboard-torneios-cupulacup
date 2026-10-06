@@ -14,11 +14,22 @@ export default function Footer() {
           <Link href="/campeonatos" className="hover:text-white">
             Campeonatos
           </Link>
+          <Link href="/hall-da-fama" className="hover:text-white">
+            Hall da Fama
+          </Link>
           <Link href="/minhas-equipes" className="hover:text-white">
             Minhas equipes
           </Link>
           <Link href="/regras" className="hover:text-white">
             Regras
+          </Link>
+        </nav>
+        <nav aria-label="Institucional" className="flex flex-col gap-2 text-sm">
+          <Link href="/termos" className="hover:text-white">
+            Termos de Uso
+          </Link>
+          <Link href="/privacidade" className="hover:text-white">
+            Privacidade
           </Link>
         </nav>
       </div>

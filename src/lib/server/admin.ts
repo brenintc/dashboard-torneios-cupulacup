@@ -22,7 +22,7 @@ export function getAdmin(): SupabaseClient {
 /** Cliente "como o usuário": usa o JWT dos cookies, então o RLS continua valendo. */
 export async function supabaseServidor() {
   const store = await cookies()
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (lista) => {

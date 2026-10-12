@@ -1,5 +1,5 @@
 export const SUPABASE_URL = 'https://okasvbcqbzmszjrohmnq.supabase.co'
-export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_COLE_AQUI'
+export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_E1MNSTXqmtkZzguO15i_4A_HYiD1DwP'
 
 if (!SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')) {
   throw new Error('Use a chave PUBLISHABLE (sb_publishable_...) aqui.')

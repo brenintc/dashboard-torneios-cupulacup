@@ -2,6 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/lib/supabaseEnv'
 
 let servico: SupabaseClient | null = null
 
@@ -12,7 +13,7 @@ let servico: SupabaseClient | null = null
  */
 export function getAdmin(): SupabaseClient {
   if (!servico) {
-    servico = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    servico = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
   }
@@ -22,7 +23,7 @@ export function getAdmin(): SupabaseClient {
 /** Cliente "como o usuário": usa o JWT dos cookies, então o RLS continua valendo. */
 export async function supabaseServidor() {
   const store = await cookies()
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  return createServerClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (lista) => {

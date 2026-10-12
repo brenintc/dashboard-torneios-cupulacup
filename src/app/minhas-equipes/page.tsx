@@ -12,7 +12,7 @@ type Linha = Equipe & { team_members: { count: number }[] }
 
 export default function MinhasEquipes() {
   const router = useRouter()
-  const { user, loading, login } = useAuth()
+  const { user, loading, login, temDiscord } = useAuth()
   const [equipes, setEquipes] = useState<Linha[]>([])
   const [nome, setNome] = useState('')
   const [tag, setTag] = useState('')
@@ -60,9 +60,9 @@ export default function MinhasEquipes() {
       <Pagina largura="max-w-xl">
         <h1 className="text-4xl font-bold">Minhas equipes</h1>
         <div className="card mt-6 p-6">
-          <p className="mb-4">Entre com o Discord para criar e gerenciar suas equipes.</p>
+          <p className="mb-4">Entre na sua conta para criar e gerenciar suas equipes.</p>
           <button onClick={login} className="btn-primary">
-            Entrar com Discord
+            Entrar
           </button>
         </div>
       </Pagina>
@@ -71,6 +71,16 @@ export default function MinhasEquipes() {
   return (
     <Pagina largura="max-w-3xl">
       <h1 className="text-4xl font-bold">Minhas equipes</h1>
+
+      {!temDiscord && (
+        <p className="card mt-6 p-4 text-sm">
+          Sua conta ainda não tem o Discord vinculado. Sem ele, o bot não consegue chamar você para o
+          ready-check das partidas.{' '}
+          <Link href="/conta" className="text-brand-hi underline">
+            Vincular Discord
+          </Link>
+        </p>
+      )}
 
       <section className="mt-8">
         {equipes.length === 0 ? (

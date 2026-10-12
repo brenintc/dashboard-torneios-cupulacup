@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getAdmin, usuarioDaRequisicao, ehAdmin } from '@/lib/server/admin'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { exigirAdmin } from '@/lib/server/admin'
 import { discord, PERM } from '@/lib/server/discord'
 
 export const runtime = 'nodejs'
@@ -22,13 +23,14 @@ interface Partida {
 const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 export async function POST(req: Request) {
-  const user = await usuarioDaRequisicao(req)
-  if (!user || !(await ehAdmin(user.id))) {
+  let db: SupabaseClient
+  try {
+    ;({ sb: db } = await exigirAdmin())
+  } catch {
     return NextResponse.json({ erro: 'Apenas administradores' }, { status: 403 })
   }
 
   const { match_id, acao } = await req.json().catch(() => ({}))
-  const db = getAdmin()
   const { data } = await db
     .from('matches')
     .select(

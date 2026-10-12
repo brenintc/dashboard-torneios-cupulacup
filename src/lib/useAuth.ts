@@ -1,9 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
 export function useAuth() {
+  const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -11,17 +14,14 @@ export function useAuth() {
   useEffect(() => {
     let ativo = true
 
+    // Só para mostrar/esconder o link "Admin". Quem decide de verdade é o banco (RLS).
     async function verificarAdmin(u: User | null) {
       if (!u) {
         if (ativo) setIsAdmin(false)
         return
       }
-      const { data } = await supabase
-        .from('admins')
-        .select('user_id')
-        .eq('user_id', u.id)
-        .maybeSingle()
-      if (ativo) setIsAdmin(!!data)
+      const { data } = await supabase.rpc('is_admin')
+      if (ativo) setIsAdmin(data === true)
     }
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -46,13 +46,17 @@ export function useAuth() {
     }
   }, [])
 
-  const login = () =>
-    supabase.auth.signInWithOAuth({
-      provider: 'discord',
-      options: { redirectTo: 'https://dashboard-cupulacup.vercel.app/'},
-    })
+  /** Leva para a tela de entrada e volta para a página atual depois do login. */
+  const login = useCallback(() => {
+    router.push(`/entrar?next=${encodeURIComponent(pathname)}`)
+  }, [router, pathname])
 
-  const logout = () => supabase.auth.signOut()
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut()
+    router.refresh()
+  }, [router])
 
-  return { user, isAdmin, loading, login, logout }
+  const temDiscord = !!user?.identities?.some((i) => i.provider === 'discord')
+
+  return { user, isAdmin, loading, login, logout, temDiscord }
 }

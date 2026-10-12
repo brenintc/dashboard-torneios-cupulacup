@@ -186,8 +186,8 @@ export default function CampeonatoDetalhe() {
             <p className="text-mute">As inscrições deste campeonato estão encerradas.</p>
           ) : !user ? (
             <>
-              <p className="mb-4">Entre com o Discord para inscrever sua equipe.</p>
-              <button onClick={login} className="btn-primary">Entrar com Discord</button>
+              <p className="mb-4">Entre na sua conta para inscrever sua equipe.</p>
+              <button onClick={login} className="btn-primary">Entrar</button>
             </>
           ) : minhas.length === 0 ? (
             <>

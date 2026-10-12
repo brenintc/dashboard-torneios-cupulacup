@@ -1,3 +1,4 @@
+import 'server-only'
 import { createPublicKey, verify } from 'crypto'
 
 const API = 'https://discord.com/api/v10'
